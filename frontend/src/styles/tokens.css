@@ -1,0 +1,86 @@
+:root {
+  /* color-foundation */
+  --color-bg: #0b0b10;
+  --color-text: #f2f2f7;
+  --color-text-muted: #b4b4c6;
+
+  /* theme tokens (generated palette) */
+  --theme-bg: #fff9dc;
+  --theme-primary: #f2c94c;
+  --theme-accent: #6b4e16;
+  --theme-text: #2f2412;
+
+  /* inks */
+  --theme-primary-ink: #2f2412;
+  --theme-accent-ink: #fff9dc;
+
+  /* color-brand */
+  --color-primary: #f5c400;
+  --color-primary-ink: #1a1a1a;
+
+  /* color-surface */
+  --color-surface: rgba(255, 255, 255, 0.05);
+
+  /* color-border */
+  --color-border: rgba(255, 255, 255, 0.16);
+  --color-border-weak: rgba(255, 255, 255, 0.12);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+
+  /* glass */
+  --glass-subtle: rgba(255, 255, 255, 0.04);
+  --glass: rgba(255, 255, 255, 0.06);
+  --glass-strong: rgba(255, 255, 255, 0.12);
+
+  /* effects */
+  --effect-header-bg: rgba(11, 11, 16, 0.55);
+  --effect-header-blur: 0.6rem;
+
+  --effect-fav-focus: rgba(245, 196, 0, 0.6);
+  --effect-fav-ring: rgba(245, 196, 0, 0.18);
+
+  /* typography */
+  --font-family-sans:
+    Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-size-base: 1rem;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 750;
+
+  /* layout */
+  --size-container-max: 68rem;
+
+  /* radius */
+  --radius-base: 1rem;
+  --radius-chip: 0.85rem;
+  --radius-card: 1.25rem;
+  --radius-round: 999px;
+
+  --radius-input: 1.1rem;
+  --radius-input-lg: 1.2rem;
+
+  /* spacing */
+  --space-2: 0.75rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2.25rem;
+
+  /* breakpoints */
+  --bp-sm: 30rem;
+  --bp-md: 40rem;
+  --bp-lg: 60rem;
+
+  --bloom-1-color: rgba(245, 196, 0, 0.22);
+  --bloom-2-color: rgba(108, 75, 182, 0.16);
+
+  --gradient-bloom-1: radial-gradient(
+    75rem 50rem at 20% -10%,
+    var(--bloom-1-color),
+    transparent 55%
+  );
+  --gradient-bloom-2: radial-gradient(
+    56rem 44rem at 100% 0%,
+    var(--bloom-2-color),
+    transparent 45%
+  );
+}
