@@ -1,18 +1,26 @@
 import { getThemesCollection } from "../mongo.js";
-import { getPokemonByKey, POKEMON_CATALOG } from "../pokemonCatalog.js";
+import { PokeApiProvider } from "../providers/PokeApiProvider.js";
 import { normalizeUsername } from "../providers/CredentialsProvider.js";
 import { verifyAuthToken } from "./verifyAuthToken.js";
 
+const pokeApiProvider = new PokeApiProvider();
+
 export function registerThemeRoutes(app) {
-  app.get("/api/pokemon", (req, res) => {
-    res.json({ pokemon: POKEMON_CATALOG });
+  app.get("/api/pokemon", async (req, res, next) => {
+    try {
+      const pokemon = await pokeApiProvider.getPokemonCatalog();
+      return res.json({ pokemon });
+    } catch (error) {
+      return next(error);
+    }
   });
 
   app.get("/api/users/:userId/themes", verifyAuthToken, verifyOwnUserAccess, async (req, res, next) => {
     try {
       const userId = normalizeUsername(req.params.userId);
       const themes = await getThemesCollection().find({ userId }).sort({ createdAt: -1 }).toArray();
-      return res.json({ themes: themes.map(formatThemeDocument) });
+      const hydratedThemes = await Promise.all(themes.map((theme) => hydrateThemeFromPokeApi(theme)));
+      return res.json({ themes: hydratedThemes.map(formatThemeDocument) });
     } catch (error) {
       return next(error);
     }
@@ -27,7 +35,7 @@ export function registerThemeRoutes(app) {
         return res.status(400).json({ error: "Bad request", message: "pokemonKey is required." });
       }
 
-      const pokemon = getPokemonByKey(pokemonKey);
+      const pokemon = await pokeApiProvider.getPokemonByKey(pokemonKey);
       if (!pokemon) {
         return res.status(404).json({ error: "Not found", message: "Unknown pokemon key." });
       }
@@ -55,10 +63,11 @@ export function registerThemeRoutes(app) {
       } catch (error) {
         if (error?.code === 11000) {
           const existingTheme = await collection.findOne({ userId, pokemonKey: pokemon.key });
+          const hydratedExistingTheme = await hydrateThemeFromPokeApi(existingTheme);
           return res.status(409).json({
             error: "Conflict",
             message: "Theme already exists for this user.",
-            theme: formatThemeDocument(existingTheme),
+            theme: formatThemeDocument(hydratedExistingTheme),
           });
         }
         return next(error);
@@ -133,5 +142,29 @@ function formatThemeDocument(theme) {
     palette: theme.palette,
     createdAt: theme.createdAt instanceof Date ? theme.createdAt.toISOString() : theme.createdAt,
     updatedAt: theme.updatedAt instanceof Date ? theme.updatedAt.toISOString() : theme.updatedAt,
+  };
+}
+
+async function hydrateThemeFromPokeApi(theme) {
+  if (!theme) {
+    return theme;
+  }
+
+  if (typeof theme.imageSrc === "string" && !theme.imageSrc.startsWith("/")) {
+    return theme;
+  }
+
+  const pokemon = await pokeApiProvider.getPokemonByKey(theme.pokemonKey);
+  if (!pokemon) {
+    return theme;
+  }
+
+  return {
+    ...theme,
+    pokemonName: pokemon.name,
+    types: pokemon.types,
+    dex: pokemon.dex,
+    imageSrc: pokemon.imageSrc,
+    palette: pokemon.palette,
   };
 }

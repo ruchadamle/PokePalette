@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { FaMoon, FaSun, FaUserCircle } from "react-icons/fa";
+import { FaCircleNotch, FaMoon, FaSun, FaUserCircle } from "react-icons/fa";
 
 export default function SiteHeader({ isDarkMode, onToggleDarkMode, isAuthenticated, username }) {
   return (
@@ -8,11 +8,7 @@ export default function SiteHeader({ isDarkMode, onToggleDarkMode, isAuthenticat
       <div className="container header-inner">
         <div className="header-left">
           <NavLink className="brand" to="/" aria-label="PokePalette home">
-            <img
-              className="brand-logo"
-              src="/pokeball.png"
-              alt="PokePalette logo"
-            />
+            <FaCircleNotch className="brand-logo brand-glyph" aria-hidden="true" />
             <span className="brand-text">PokePalette</span>
           </NavLink>
 

@@ -7,6 +7,7 @@ const mongoCluster = (getEnvVar("MONGO_CLUSTER", false) ?? "").trim();
 const dbName = (getEnvVar("DB_NAME", false) ?? "").trim() || "pokepalette";
 const usersCollectionName = (getEnvVar("USERS_COLLECTION_NAME", false) ?? "").trim() || "users";
 const credsCollectionName = (getEnvVar("CREDS_COLLECTION_NAME", false) ?? "").trim() || "userCreds";
+const pokeApiCollectionName = (getEnvVar("POKEAPI_COLLECTION_NAME", false) ?? "").trim() || "pokeapi";
 const mongoUri = buildMongoUri();
 
 let mongoClient = null;
@@ -25,6 +26,7 @@ export async function connectToMongo() {
 
   await mongoDb.collection("themes").createIndex({ userId: 1, pokemonKey: 1 }, { unique: true });
   await mongoDb.collection(credsCollectionName).createIndex({ username: 1 }, { unique: true });
+  await mongoDb.collection(pokeApiCollectionName).createIndex({ key: 1 }, { unique: true });
 }
 
 export function getThemesCollection() {
@@ -46,6 +48,13 @@ export function getUserCredsCollection() {
     throw new Error("MongoDB is not connected yet.");
   }
   return mongoDb.collection(credsCollectionName);
+}
+
+export function getPokeApiCollection() {
+  if (!mongoDb) {
+    throw new Error("MongoDB is not connected yet.");
+  }
+  return mongoDb.collection(pokeApiCollectionName);
 }
 
 export async function closeMongo() {
