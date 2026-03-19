@@ -150,10 +150,6 @@ async function hydrateThemeFromPokeApi(theme) {
     return theme;
   }
 
-  if (typeof theme.imageSrc === "string" && !theme.imageSrc.startsWith("/")) {
-    return theme;
-  }
-
   const pokemon = await pokeApiProvider.getPokemonByKey(theme.pokemonKey);
   if (!pokemon) {
     return theme;

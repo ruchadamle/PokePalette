@@ -51,7 +51,7 @@ export default function PokemonCard({
         <img
           className="pokemon-image"
           src={imageSrc}
-          alt={`${pokemonName} artwork`}
+          alt={`${pokemonName} sprite`}
         />
 
         <p className="pokemon-meta muted">

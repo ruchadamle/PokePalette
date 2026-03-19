@@ -308,7 +308,8 @@ select option {
 .pokemon-image {
   width: 100%;
   height: 18rem;
-  object-fit: cover;
+  object-fit: contain;
+  image-rendering: pixelated;
   border-radius: var(--radius-card);
   border: 1px solid var(--color-border);
   background: var(--glass);
@@ -535,7 +536,8 @@ select option {
 .sprite-img {
   width: 3.25rem;
   height: 3.25rem;
-  object-fit: cover;
+  object-fit: contain;
+  image-rendering: pixelated;
   border-radius: var(--radius-base);
   border: 1px solid var(--color-border);
   background: var(--glass-strong);

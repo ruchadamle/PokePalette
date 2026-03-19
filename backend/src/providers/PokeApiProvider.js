@@ -1,17 +1,19 @@
 import { getPokeApiCollection } from "../mongo.js";
+import { getEnvVar } from "../getEnvVar.js";
+import { generateWebsitePaletteFromImage } from "./paletteGenerator.js";
+import {
+  getGenerationVBlackWhiteSpriteAbsolutePath,
+  getGenerationVBlackWhiteSpriteRelativePath,
+  hasGenerationVBlackWhiteSprite,
+} from "../spritePaths.js";
 
 const DEFAULT_POKEMON_KEYS = ["pikachu", "charmander", "bulbasaur", "squirtle", "joltik"];
-
-const TYPE_COLORS = {
-  bug: { bg: "#EEF8D3", primary: "#8BC34A", accent: "#2C4020", text: "#1D2A17" },
-  electric: { bg: "#FFF9DC", primary: "#F2C94C", accent: "#6B4E16", text: "#2F2412" },
-  fire: { bg: "#FFE3D6", primary: "#FF6A2A", accent: "#2E1B14", text: "#1A1A1A" },
-  grass: { bg: "#DFF7E6", primary: "#2FAF64", accent: "#163022", text: "#1A1A1A" },
-  poison: { bg: "#F1E4FF", primary: "#9B51E0", accent: "#2A173D", text: "#1A1322" },
-  water: { bg: "#E3F2FF", primary: "#2D9CDB", accent: "#14324A", text: "#0F1A24" },
-};
-
-const DEFAULT_PALETTE = { bg: "#EDF2F7", primary: "#5A67D8", accent: "#1F2A44", text: "#111827" };
+const PALETTE_VERSION = 2;
+const SPRITE_VERSION = "gen-v-black-white-local-v2";
+const DEFAULT_BACKEND_ASSET_BASE_URL = `http://localhost:${Number.parseInt(getEnvVar("PORT", false), 10) || 3000}`;
+const BACKEND_ASSET_BASE_URL = (getEnvVar("BACKEND_ASSET_BASE_URL", false) ?? DEFAULT_BACKEND_ASSET_BASE_URL)
+  .trim()
+  .replace(/\/+$/, "");
 
 export class PokeApiProvider {
   async getPokemonCatalog() {
@@ -62,17 +64,18 @@ export class PokeApiProvider {
       .sort((a, b) => a.slot - b.slot)
       .map((entry) => capitalize(entry.type?.name ?? ""));
 
-    const primaryType = (payload.types?.[0]?.type?.name ?? "").toLowerCase();
+    const sprite = getPreferredSprite(payload);
+    const palette = await generateWebsitePaletteFromImage(sprite.paletteSource);
+
     const pokemon = {
       key: payload.name,
       name: capitalize(payload.name),
       types,
       dex: payload.id,
-      imageSrc:
-        payload.sprites?.other?.["official-artwork"]?.front_default
-        || payload.sprites?.front_default
-        || "",
-      palette: TYPE_COLORS[primaryType] ?? DEFAULT_PALETTE,
+      imageSrc: sprite.publicUrl,
+      spriteVersion: SPRITE_VERSION,
+      palette,
+      paletteVersion: PALETTE_VERSION,
       updatedAt: new Date(),
     };
 
@@ -104,7 +107,9 @@ function formatPokemonDocument(document) {
     types: document.types,
     dex: document.dex,
     imageSrc: document.imageSrc,
+    spriteVersion: document.spriteVersion ?? null,
     palette: document.palette,
+    paletteVersion: document.paletteVersion ?? null,
   };
 }
 
@@ -117,9 +122,34 @@ function isUsablePokemonDocument(document) {
     && typeof document.dex === "number"
     && typeof document.imageSrc === "string"
     && document.imageSrc.length > 0
+    && document.spriteVersion === SPRITE_VERSION
     && typeof document.palette === "object"
-    && document.palette,
+    && document.palette
+    && document.paletteVersion === PALETTE_VERSION
   );
+}
+
+function getPreferredSprite(payload) {
+  const dex = payload?.id;
+  const localRelativePath = getGenerationVBlackWhiteSpriteRelativePath(dex);
+  const localFilePath = getGenerationVBlackWhiteSpriteAbsolutePath(dex);
+  const remoteFallback = payload.sprites?.versions?.["generation-v"]?.["black-white"]?.front_default
+    || payload.sprites?.versions?.["generation-v"]?.["black-white"]?.animated?.front_default
+    || payload.sprites?.front_default
+    || payload.sprites?.other?.["official-artwork"]?.front_default
+    || "";
+
+  if (hasGenerationVBlackWhiteSprite(dex)) {
+    return {
+      publicUrl: `${BACKEND_ASSET_BASE_URL}${localRelativePath}`,
+      paletteSource: localFilePath,
+    };
+  }
+
+  return {
+    publicUrl: remoteFallback,
+    paletteSource: remoteFallback,
+  };
 }
 
 function capitalize(value) {

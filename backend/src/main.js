@@ -5,6 +5,7 @@ import { closeMongo, connectToMongo } from "./mongo.js";
 import { CredentialsProvider } from "./providers/CredentialsProvider.js";
 import { registerAuthRoutes } from "./routes/authRoutes.js";
 import { registerThemeRoutes } from "./routes/themeRoutes.js";
+import { getSpriteStaticRootDir } from "./spritePaths.js";
 
 const PORT = Number.parseInt(getEnvVar("PORT", false), 10) || 3000;
 const jwtSecret = (getEnvVar("JWT_SECRET", false) ?? "").trim();
@@ -16,6 +17,8 @@ const configuredOrigins = (getEnvVar("FRONTEND_ORIGIN", false) ?? "")
 const app = express();
 app.use(cors(configuredOrigins.length > 0 ? { origin: configuredOrigins } : undefined));
 app.use(express.json());
+
+app.use("/sprites", express.static(getSpriteStaticRootDir()));
 
 app.get("/api/health", (req, res) => {
   res.json({ ok: true });

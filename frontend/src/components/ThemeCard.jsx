@@ -22,7 +22,7 @@ export default function ThemeCard({ theme, onToggleFavorite }) {
         <img
           className="sprite-img"
           src={theme.imageSrc}
-          alt={`${theme.pokemonName} artwork`}
+          alt={`${theme.pokemonName} sprite`}
         />
 
         <div>
