@@ -1180,6 +1180,10 @@ select option {
   font-weight: var(--font-weight-regular);
 }
 
+.home-page .home-grid {
+  margin-top: 1rem;
+}
+
 input::-webkit-search-cancel-button {
   -webkit-appearance: none;
   appearance: none;

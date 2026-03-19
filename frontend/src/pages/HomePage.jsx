@@ -51,9 +51,6 @@ export default function HomePage({
 
   return (
     <main id="main" className="container home-page">
-      <section className="page-head">
-      </section>
-
       <section className="grid home-grid" style={themeVars} aria-label="Generated theme output">
         <PokemonCard
           pokemonName={pokemon.name}
