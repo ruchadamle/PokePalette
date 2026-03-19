@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { createTheme, deleteTheme, fetchPokemon, fetchThemes } from "./api/themeApi.js";
 import SiteHeader from "./components/SiteHeader.jsx";
 import PokemonLoader from "./components/PokemonLoader.jsx";
@@ -13,6 +13,7 @@ const TOKEN_STORAGE_KEY = "poke_palette_auth_token";
 const USER_STORAGE_KEY = "poke_palette_auth_user";
 
 export default function App() {
+  const location = useLocation();
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [pokemonList, setPokemonList] = useState([]);
   const [themes, setThemes] = useState([]);
@@ -106,6 +107,37 @@ export default function App() {
     document.body.classList.toggle("theme-dark", isDarkMode);
     document.body.classList.toggle("theme-light", !isDarkMode);
   }, [isDarkMode]);
+
+  useEffect(() => {
+    const baseTitle = "PokePalette";
+
+    if (isLoading) {
+      document.title = `${baseTitle} • Loading`;
+      return;
+    }
+
+    if (loadError) {
+      document.title = `${baseTitle} • Error`;
+      return;
+    }
+
+    switch (location.pathname) {
+      case "/":
+        document.title = `${baseTitle} • Home`;
+        break;
+      case "/themes":
+        document.title = `${baseTitle} • My Themes`;
+        break;
+      case "/login":
+        document.title = `${baseTitle} • ${isAuthenticated ? "Account" : "Log In"}`;
+        break;
+      case "/register":
+        document.title = `${baseTitle} • Register`;
+        break;
+      default:
+        document.title = baseTitle;
+    }
+  }, [location.pathname, isLoading, loadError, isAuthenticated]);
 
   function clearAuthState() {
     setAuthToken("");
