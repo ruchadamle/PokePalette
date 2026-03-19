@@ -6,7 +6,6 @@ import { toSwatches } from "../data/themeUtils.js";
 export default function ThemeCard({ theme, onToggleFavorite }) {
   const swatches = useMemo(() => toSwatches(theme.palette), [theme.palette]);
 
-  // Make each card control its own theme vars (so heart color can match this theme)
   const themeVars = {
     "--theme-bg": theme.palette.bg,
     "--theme-primary": theme.palette.primary,
@@ -28,7 +27,7 @@ export default function ThemeCard({ theme, onToggleFavorite }) {
         <div>
           <h3>{theme.pokemonName}</h3>
           <p className="muted">
-            {theme.types.join(" / ")} • #{String(theme.dex).padStart(3, "0")}
+            {theme.types.join(" / ")} - #{String(theme.dex).padStart(3, "0")}
           </p>
         </div>
 

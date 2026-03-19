@@ -8,19 +8,19 @@ export default function ThemesPage({ themes, onRemove, isAuthenticated }) {
   const [type, setType] = useState("All");
 
   const filtered = useMemo(() => {
-    let arr = [...themes];
+    let values = [...themes];
 
     if (type !== "All") {
-      arr = arr.filter((t) => t.types.includes(type));
+      values = values.filter((theme) => theme.types.includes(type));
     }
 
     if (sort === "Alphabetical") {
-      arr.sort((a, b) => a.pokemonName.localeCompare(b.pokemonName));
-    } else if (sort === "Pokédex number") {
-      arr.sort((a, b) => a.dex - b.dex);
+      values.sort((left, right) => left.pokemonName.localeCompare(right.pokemonName));
+    } else if (sort === "Pokedex number") {
+      values.sort((left, right) => left.dex - right.dex);
     }
 
-    return arr;
+    return values;
   }, [themes, sort, type]);
 
   return (
@@ -49,13 +49,13 @@ export default function ThemesPage({ themes, onRemove, isAuthenticated }) {
 
           <section aria-label="Saved themes">
             <div className="theme-grid">
-              {filtered.map((t) => (
+              {filtered.map((theme) => (
                 <ThemeCard
-                  key={t.id}
-                  theme={t}
+                  key={theme.id}
+                  theme={theme}
                   onToggleFavorite={(next) => {
                     if (!next) {
-                      onRemove?.(t.pokemonKey);
+                      onRemove?.(theme.pokemonKey);
                     }
                   }}
                 />

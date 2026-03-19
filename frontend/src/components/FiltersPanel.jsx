@@ -10,7 +10,7 @@ export default function FiltersPanel({
   const sortId = useId();
   const typeId = useId();
 
-  // Derive unique types from existing themes
+  // Derive unique types from existing themes.
   const types = useMemo(() => {
     const unique = new Set(themes.flatMap((t) => t.types));
     return ["All", ...Array.from(unique).sort()];
@@ -20,17 +20,17 @@ export default function FiltersPanel({
     <section className="panel">
       <h2>Filters</h2>
 
-      <form className="filters" onSubmit={(e) => e.preventDefault()}>
+      <form className="filters" onSubmit={(event) => event.preventDefault()}>
         <div className="filter-item">
           <label htmlFor={sortId}>Sort</label>
           <select
             id={sortId}
             value={sort}
-            onChange={(e) => onSortChange?.(e.target.value)}
+            onChange={(event) => onSortChange?.(event.target.value)}
           >
             <option>Most recent</option>
             <option>Alphabetical</option>
-            <option>Pokédex number</option>
+            <option>Pokedex number</option>
           </select>
         </div>
 
@@ -39,10 +39,10 @@ export default function FiltersPanel({
           <select
             id={typeId}
             value={type}
-            onChange={(e) => onTypeChange?.(e.target.value)}
+            onChange={(event) => onTypeChange?.(event.target.value)}
           >
-            {types.map((t) => (
-              <option key={t}>{t}</option>
+            {types.map((entryType) => (
+              <option key={entryType}>{entryType}</option>
             ))}
           </select>
         </div>
