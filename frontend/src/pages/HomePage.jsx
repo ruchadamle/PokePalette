@@ -13,7 +13,7 @@ export default function HomePage({
   onGenerate,
   onSave,
   onRemove,
-  isSavingTheme,
+  isAuthenticated,
   themes,
 }) {
   const options = useMemo(
@@ -68,7 +68,12 @@ export default function HomePage({
             <h2>Theme swatches</h2>
             <FavoriteToggle
               checked={isSaved}
+              disabled={!isAuthenticated}
+              title={!isAuthenticated ? "Log in to save themes." : ""}
               onChange={(next) => {
+                if (!isAuthenticated) {
+                  return;
+                }
                 if (next) {
                   onSave?.();
                 } else {
@@ -80,17 +85,6 @@ export default function HomePage({
           </div>
 
           <SwatchList swatches={swatches} />
-
-          <div className="actions">
-            <button
-              className="btn-primary"
-              type="button"
-              onClick={onSave}
-              disabled={isSavingTheme || isSaved}
-            >
-              {isSaved ? "Theme saved" : isSavingTheme ? "Saving..." : "Save theme"}
-            </button>
-          </div>
 
           <ThemePreview palette={pokemon.palette} />
         </article>

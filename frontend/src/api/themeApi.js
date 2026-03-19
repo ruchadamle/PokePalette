@@ -6,31 +6,41 @@ export async function fetchPokemon() {
   return data.pokemon ?? [];
 }
 
-export async function fetchThemes(userId) {
-  const data = await request(`/api/users/${encodeURIComponent(userId)}/themes`);
+export async function fetchThemes(userId, token) {
+  const data = await request(`/api/users/${encodeURIComponent(userId)}/themes`, {
+    token,
+  });
   return data.themes ?? [];
 }
 
-export async function createTheme(userId, pokemonKey) {
+export async function createTheme(userId, pokemonKey, token) {
   const data = await request(`/api/users/${encodeURIComponent(userId)}/themes`, {
     method: "POST",
     body: { pokemonKey },
+    token,
   });
   return data.theme;
 }
 
-export async function deleteTheme(userId, pokemonKey) {
+export async function deleteTheme(userId, pokemonKey, token) {
   await request(`/api/users/${encodeURIComponent(userId)}/themes/${encodeURIComponent(pokemonKey)}`, {
     method: "DELETE",
+    token,
   });
 }
 
-async function request(path, { method = "GET", body } = {}) {
+async function request(path, { method = "GET", body, token } = {}) {
+  const headers = {};
+  if (body) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
 

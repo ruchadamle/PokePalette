@@ -2,11 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { createTheme, deleteTheme, fetchPokemon, fetchThemes } from "./api/themeApi.js";
 import SiteHeader from "./components/SiteHeader.jsx";
+import { hexToRgba } from "./data/themeUtils.js";
+import LoginPage from "./pages/LoginPage.jsx";
+import RegisterPage from "./pages/RegisterPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import ThemesPage from "./pages/ThemesPage.jsx";
-import { hexToRgba } from "./data/themeUtils.js";
 
-const DEFAULT_USER_ID = (import.meta.env.VITE_USER_ID ?? "").trim() || "demo-user";
+const TOKEN_STORAGE_KEY = "poke_palette_auth_token";
+const USER_STORAGE_KEY = "poke_palette_auth_user";
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -14,16 +17,24 @@ export default function App() {
   const [themes, setThemes] = useState([]);
   const [searchText, setSearchText] = useState("Pikachu");
   const [currentPokemonKey, setCurrentPokemonKey] = useState("");
+  const [authToken, setAuthToken] = useState(() => readSessionValue(TOKEN_STORAGE_KEY));
+  const [authUsername, setAuthUsername] = useState(() => readSessionValue(USER_STORAGE_KEY));
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
-  const [isMutatingTheme, setIsMutatingTheme] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+
+  const isAuthenticated = Boolean(authToken && authUsername);
 
   const currentPokemon = useMemo(
     () => pokemonList.find((pokemon) => pokemon.key === currentPokemonKey) || pokemonList[0] || null,
     [currentPokemonKey, pokemonList],
   );
+
+  useEffect(() => {
+    writeSessionValue(TOKEN_STORAGE_KEY, authToken);
+    writeSessionValue(USER_STORAGE_KEY, authUsername);
+  }, [authToken, authUsername]);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,23 +44,35 @@ export default function App() {
       setLoadError("");
 
       try {
-        const [pokemon, savedThemes] = await Promise.all([
-          fetchPokemon(),
-          fetchThemes(DEFAULT_USER_ID),
-        ]);
-
+        const pokemon = await fetchPokemon();
         if (cancelled) {
           return;
         }
 
         setPokemonList(pokemon);
-        setThemes(savedThemes);
-
         const initialPokemon = pokemon.find((entry) => entry.key === "pikachu") || pokemon[0] || null;
         setCurrentPokemonKey(initialPokemon?.key ?? "");
         setSearchText(initialPokemon?.name ?? "");
-      } catch (error) {
+
+        if (!isAuthenticated) {
+          setThemes([]);
+          return;
+        }
+
+        const savedThemes = await fetchThemes(authUsername, authToken);
         if (!cancelled) {
+          setThemes(savedThemes);
+        }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        if (error.status === 401) {
+          clearAuthState();
+          setThemes([]);
+          setActionError("Your session expired. Please log in again.");
+        } else {
           setLoadError(error.message || "Could not load data from server.");
         }
       } finally {
@@ -64,7 +87,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, [reloadToken, isAuthenticated, authToken, authUsername]);
 
   useEffect(() => {
     if (!currentPokemon) {
@@ -80,6 +103,19 @@ export default function App() {
     document.body.classList.toggle("theme-dark", isDarkMode);
     document.body.classList.toggle("theme-light", !isDarkMode);
   }, [isDarkMode]);
+
+  function clearAuthState() {
+    setAuthToken("");
+    setAuthUsername("");
+    writeSessionValue(TOKEN_STORAGE_KEY, "");
+    writeSessionValue(USER_STORAGE_KEY, "");
+  }
+
+  function handleAuthSuccess({ token, username }) {
+    setAuthToken(token);
+    setAuthUsername(username);
+    setActionError("");
+  }
 
   function generateTheme() {
     if (pokemonList.length === 0) {
@@ -100,15 +136,19 @@ export default function App() {
       return;
     }
 
+    if (!isAuthenticated) {
+      setActionError("Log in to save themes.");
+      return;
+    }
+
     const alreadySaved = themes.some((theme) => theme.pokemonKey === currentPokemon.key);
     if (alreadySaved) {
       return;
     }
 
     setActionError("");
-    setIsMutatingTheme(true);
     try {
-      const createdTheme = await createTheme(DEFAULT_USER_ID, currentPokemon.key);
+      const createdTheme = await createTheme(authUsername, currentPokemon.key, authToken);
       setThemes((prevThemes) => [createdTheme, ...prevThemes]);
     } catch (error) {
       if (error.status === 409 && error.payload?.theme) {
@@ -119,26 +159,36 @@ export default function App() {
         ]);
         return;
       }
+      if (error.status === 401) {
+        clearAuthState();
+        setActionError("Your session expired. Please log in again.");
+        return;
+      }
       setActionError(error.message || "Could not save theme.");
-    } finally {
-      setIsMutatingTheme(false);
     }
   }
 
   async function removeThemeByKey(pokemonKey) {
+    if (!isAuthenticated) {
+      setActionError("Log in to remove themes.");
+      return;
+    }
+
     setActionError("");
-    setIsMutatingTheme(true);
     try {
-      await deleteTheme(DEFAULT_USER_ID, pokemonKey);
+      await deleteTheme(authUsername, pokemonKey, authToken);
       setThemes((prevThemes) => prevThemes.filter((theme) => theme.pokemonKey !== pokemonKey));
     } catch (error) {
       if (error.status === 404) {
         setThemes((prevThemes) => prevThemes.filter((theme) => theme.pokemonKey !== pokemonKey));
         return;
       }
+      if (error.status === 401) {
+        clearAuthState();
+        setActionError("Your session expired. Please log in again.");
+        return;
+      }
       setActionError(error.message || "Could not remove theme.");
-    } finally {
-      setIsMutatingTheme(false);
     }
   }
 
@@ -147,6 +197,8 @@ export default function App() {
       <SiteHeader
         isDarkMode={isDarkMode}
         onToggleDarkMode={() => setIsDarkMode((value) => !value)}
+        isAuthenticated={isAuthenticated}
+        username={authUsername}
       />
 
       {isLoading ? (
@@ -186,7 +238,7 @@ export default function App() {
                   onGenerate={generateTheme}
                   onSave={saveCurrentTheme}
                   onRemove={removeThemeByKey}
-                  isSavingTheme={isMutatingTheme}
+                  isAuthenticated={isAuthenticated}
                   themes={themes}
                 />
               )}
@@ -197,13 +249,46 @@ export default function App() {
                 <ThemesPage
                   themes={themes}
                   onRemove={removeThemeByKey}
+                  isAuthenticated={isAuthenticated}
                 />
               )}
             />
+            <Route
+              path="/login"
+              element={(
+                <LoginPage
+                  isAuthenticated={isAuthenticated}
+                  username={authUsername}
+                  onAuthSuccess={handleAuthSuccess}
+                  onLogout={clearAuthState}
+                />
+              )}
+            />
+            <Route path="/register" element={<RegisterPage onAuthSuccess={handleAuthSuccess} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </>
       )}
     </>
   );
+}
+
+function readSessionValue(key) {
+  try {
+    return sessionStorage.getItem(key) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function writeSessionValue(key, value) {
+  try {
+    if (value) {
+      sessionStorage.setItem(key, value);
+    } else {
+      sessionStorage.removeItem(key);
+    }
+  } catch {
+    // Ignore sessionStorage write errors.
+  }
 }

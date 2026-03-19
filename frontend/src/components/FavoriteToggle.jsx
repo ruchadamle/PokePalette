@@ -6,21 +6,26 @@ export default function FavoriteToggle({
   onChange,
   size = "default",
   ariaLabel,
+  disabled = false,
+  title = "",
 }) {
   const id = useId();
   const sizeClass = size === "small" ? "small" : "";
+  const disabledClass = disabled ? "disabled" : "";
 
   return (
     <label
-      className={`fav ${sizeClass}`.trim()}
+      className={`fav ${sizeClass} ${disabledClass}`.trim()}
       htmlFor={id}
       aria-label={ariaLabel || "Toggle favorite"}
+      title={title}
     >
       <input
         id={id}
         type="checkbox"
         className="fav-toggle"
         checked={!!checked}
+        disabled={disabled}
         onChange={(e) => onChange?.(e.target.checked)}
       />
 

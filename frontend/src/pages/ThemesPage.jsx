@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import FiltersPanel from "../components/FiltersPanel.jsx";
 import ThemeCard from "../components/ThemeCard.jsx";
 
-export default function ThemesPage({ themes, onRemove }) {
+export default function ThemesPage({ themes, onRemove, isAuthenticated }) {
   const [sort, setSort] = useState("Most recent");
   const [type, setType] = useState("All");
 
@@ -28,28 +29,41 @@ export default function ThemesPage({ themes, onRemove }) {
         <h1>My Themes</h1>
       </section>
 
-      <FiltersPanel
-        sort={sort}
-        type={type}
-        onSortChange={setSort}
-        onTypeChange={setType}
-        themes={themes}
-      />
+      {!isAuthenticated && (
+        <section className="panel status-panel">
+          <p>
+            <Link to="/login">Log in</Link> to view and manage saved themes.
+          </p>
+        </section>
+      )}
 
-      <section aria-label="Saved themes">
-        <div className="theme-grid">
-          {filtered.map((t) => (
-            <ThemeCard
-              key={t.id}
-              theme={t}
-              onToggleFavorite={(next) => {
-                // if user unlikes it, remove from My Themes
-                if (!next) onRemove?.(t.pokemonKey);
-              }}
-            />
-          ))}
-        </div>
-      </section>
+      {isAuthenticated && (
+        <>
+          <FiltersPanel
+            sort={sort}
+            type={type}
+            onSortChange={setSort}
+            onTypeChange={setType}
+            themes={themes}
+          />
+
+          <section aria-label="Saved themes">
+            <div className="theme-grid">
+              {filtered.map((t) => (
+                <ThemeCard
+                  key={t.id}
+                  theme={t}
+                  onToggleFavorite={(next) => {
+                    if (!next) {
+                      onRemove?.(t.pokemonKey);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          </section>
+        </>
+      )}
     </main>
   );
 }
