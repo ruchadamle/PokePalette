@@ -24,7 +24,7 @@ export default function ThemesPage({ themes, onRemove, isAuthenticated }) {
   }, [themes, sort, type]);
 
   return (
-    <main id="main" className="container">
+    <main id="main" className="container themes-page">
       <section className="page-head">
         <h1>My Themes</h1>
       </section>

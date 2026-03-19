@@ -307,6 +307,7 @@ p {
   justify-content: flex-start;
   padding-left: 0.78rem;
   padding-right: 3rem;
+  color: #ffffff;
 }
 
 .dm-toggle-thumb {
@@ -1001,6 +1002,10 @@ select option {
 .theme-grid {
   display: grid;
   gap: var(--space-4);
+}
+
+.themes-page {
+  padding-bottom: var(--space-5);
 }
 
 .theme-card {
