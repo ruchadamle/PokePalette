@@ -44,8 +44,8 @@ export function createPreviewVariants(palette) {
     gridLine: mixHex(text, bg, 0.82),
     link: adjustHex(primary, { s: 0.06, l: -0.07 }),
     linkHover: adjustHex(accent, { s: 0.08, l: -0.06 }),
-    ctaBg: primaryStrong,
-    ctaHover: mixHex(primaryStrong, accentStrong, 0.22),
+    ctaBg: mixHex(primary, "#ffffff", 0.46),
+    ctaHover: mixHex(primary, "#ffffff", 0.34),
     kpiTrend: mixHex(primaryStrong, accentStrong, 0.35),
     tagBg: mixHex(accentSoft, bg, 0.3),
   };

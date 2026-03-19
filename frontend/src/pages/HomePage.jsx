@@ -52,8 +52,6 @@ export default function HomePage({
   return (
     <main id="main" className="container home-page">
       <section className="page-head">
-        <h1>Generate a theme</h1>
-        <p className="muted">Choose a Pokemon to generate a color palette.</p>
       </section>
 
       <section className="grid home-grid" style={themeVars} aria-label="Generated theme output">
@@ -70,7 +68,7 @@ export default function HomePage({
 
         <article className="panel swatch-panel">
           <div className="panel-top">
-            <h2>Theme swatches</h2>
+            <h2>Theme Swatches</h2>
             <FavoriteToggle
               checked={isSaved}
               disabled={!isAuthenticated}

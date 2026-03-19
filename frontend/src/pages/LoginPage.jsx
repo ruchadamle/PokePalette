@@ -40,7 +40,9 @@ export default function LoginPage({
     return (
       <main id="main" className="container auth-page">
         <section className="panel auth-card">
-          <h1>Logged in as: {username}</h1>
+          <h1 className="auth-logged-in-title">
+            Logged in as: <span className="auth-username">{username}</span>
+          </h1>
           <button className="btn-primary auth-logout-btn" type="button" onClick={onLogout}>
             Log out
           </button>

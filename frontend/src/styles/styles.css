@@ -156,6 +156,12 @@ p {
   border-bottom: 1px solid var(--color-border);
   background: rgba(11, 11, 16, 0.96);
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.38);
+  animation: mobile-nav-reveal 0.2s ease-out;
+}
+
+body.theme-light .mobile-nav {
+  background: rgba(246, 247, 251, 0.98);
+  box-shadow: 0 8px 22px rgba(16, 18, 26, 0.16);
 }
 
 .mobile-nav a {
@@ -165,6 +171,7 @@ p {
   border-radius: 0;
   padding: 0.95rem 1.15rem;
   width: 100%;
+  animation: mobile-nav-link-reveal 0.24s ease-out both;
 }
 
 .mobile-nav .account-link {
@@ -183,8 +190,38 @@ p {
   border-top: 1px solid var(--color-border-weak);
 }
 
+.mobile-nav a:nth-child(2) {
+  animation-delay: 0.03s;
+}
+
+.mobile-nav a:nth-child(3) {
+  animation-delay: 0.06s;
+}
+
 .mobile-nav a:hover {
   background: var(--glass-subtle);
+}
+
+@keyframes mobile-nav-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mobile-nav-link-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .sr-only {
@@ -236,7 +273,7 @@ p {
   padding: 0.22rem;
   border: 1px solid var(--color-border-strong);
   border-radius: 999px;
-  background: linear-gradient(120deg, rgba(245, 196, 0, 0.28), rgba(255, 255, 255, 0.12));
+  background: linear-gradient(120deg, var(--bloom-1-color), var(--bloom-2-color));
   color: var(--color-text);
   cursor: pointer;
   display: inline-flex;
@@ -256,6 +293,11 @@ p {
 .dm-toggle.is-light {
   color: var(--color-text);
   border-color: rgba(16, 18, 26, 0.55);
+  background: linear-gradient(
+    120deg,
+    #ffffff 12%,
+    color-mix(in srgb, var(--theme-primary) 28%, #ffffff 72%) 100%
+  );
 }
 
 .dm-toggle::after {
@@ -287,7 +329,7 @@ p {
   display: flex;
   align-items: center;
   font-family: var(--font-family-sans), sans-serif;
-  font-size: 0.75rem;
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-regular);
   color: var(--color-text-muted);
   letter-spacing: 0;
@@ -329,6 +371,7 @@ p {
 
 .dm-toggle.is-light .dm-toggle-thumb {
   border-color: rgba(16, 18, 26, 0.45);
+  background: #ffffff;
 }
 
 .dm-toggle.is-dark .dm-toggle-thumb {
@@ -1280,6 +1323,14 @@ input::-webkit-search-cancel-button {
 .auth-logout-btn {
   background: var(--theme-primary);
   color: var(--theme-primary-ink);
+}
+
+.auth-logout-btn {
+  font-weight: var(--font-weight-regular);
+}
+
+.auth-logged-in-title .auth-username {
+  font-weight: var(--font-weight-regular);
 }
 
 .auth-inline-error {
