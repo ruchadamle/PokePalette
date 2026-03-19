@@ -1,5 +1,8 @@
 import cors from "cors";
 import express from "express";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { getEnvVar } from "./getEnvVar.js";
 import { closeMongo, connectToMongo } from "./mongo.js";
 import { CredentialsProvider } from "./providers/CredentialsProvider.js";
@@ -27,6 +30,17 @@ app.get("/api/health", (req, res) => {
 const credentialsProvider = new CredentialsProvider();
 registerAuthRoutes(app, credentialsProvider);
 registerThemeRoutes(app);
+
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDir = path.dirname(currentFilePath);
+const frontendDistDir = path.resolve(currentDir, "..", "..", "frontend", "dist");
+
+if (existsSync(frontendDistDir)) {
+  app.use(express.static(frontendDistDir));
+  app.get(/^\/(?!api(?:\/|$)|sprites(?:\/|$)).*/, (req, res) => {
+    res.sendFile(path.join(frontendDistDir, "index.html"));
+  });
+}
 
 app.use((error, req, res, next) => {
   console.error("Unhandled server error", error);
