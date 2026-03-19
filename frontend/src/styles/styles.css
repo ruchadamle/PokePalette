@@ -727,6 +727,21 @@ input::-webkit-search-cancel-button {
   min-width: 3.5rem;
 }
 
+.combo-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 6rem;
+}
+
+.combo-sprite {
+  width: 1.35rem;
+  height: 1.35rem;
+  object-fit: contain;
+  image-rendering: pixelated;
+  flex: 0 0 auto;
+}
+
 .combo-empty {
   padding: 0.85rem 1rem;
   color: var(--color-text-muted);

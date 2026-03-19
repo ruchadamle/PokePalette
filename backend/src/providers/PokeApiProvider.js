@@ -3,13 +3,16 @@ import { getEnvVar } from "../getEnvVar.js";
 import { generateWebsitePaletteFromImage } from "./paletteGenerator.js";
 import {
   getGenerationVBlackWhiteSpriteAbsolutePath,
+  getGenerationVBlackWhiteSpriteDexNumbers,
   getGenerationVBlackWhiteSpriteRelativePath,
   hasGenerationVBlackWhiteSprite,
 } from "../spritePaths.js";
 
-const DEFAULT_POKEMON_KEYS = ["pikachu", "charmander", "bulbasaur", "squirtle", "joltik"];
 const PALETTE_VERSION = 2;
 const SPRITE_VERSION = "gen-v-black-white-local-v2";
+const CATALOG_SYNC_CONCURRENCY = 8;
+const MISSING_DEX_KEY_PREFIX = "missing-dex-";
+const MAX_SUPPORTED_DEX = 10000;
 const DEFAULT_BACKEND_ASSET_BASE_URL = `http://localhost:${Number.parseInt(getEnvVar("PORT", false), 10) || 3000}`;
 const BACKEND_ASSET_BASE_URL = (getEnvVar("BACKEND_ASSET_BASE_URL", false) ?? DEFAULT_BACKEND_ASSET_BASE_URL)
   .trim()
@@ -18,15 +21,19 @@ const BACKEND_ASSET_BASE_URL = (getEnvVar("BACKEND_ASSET_BASE_URL", false) ?? DE
 export class PokeApiProvider {
   async getPokemonCatalog() {
     const collection = getPokeApiCollection();
-    const existing = (await collection.find({}).sort({ dex: 1 }).toArray())
-      .filter(isUsablePokemonDocument)
-      .map(formatPokemonDocument);
-    if (existing.length >= DEFAULT_POKEMON_KEYS.length) {
+    await collection.deleteMany({ dex: { $gt: MAX_SUPPORTED_DEX } });
+    const targetDexNumbers = getGenerationVBlackWhiteSpriteDexNumbers()
+      .filter((dex) => dex <= MAX_SUPPORTED_DEX);
+
+    if (targetDexNumbers.length === 0) {
+      const existing = (await collection.find({}).sort({ dex: 1, key: 1 }).toArray())
+        .filter(isUsablePokemonDocument)
+        .map(formatPokemonDocument);
       return existing;
     }
 
-    await Promise.all(DEFAULT_POKEMON_KEYS.map((key) => this.fetchAndStorePokemon(key)));
-    const refreshed = await collection.find({}).sort({ dex: 1 }).toArray();
+    await this.syncCatalogByDexNumbers(targetDexNumbers, collection);
+    const refreshed = await collection.find({}).sort({ dex: 1, key: 1 }).toArray();
     return refreshed.filter(isUsablePokemonDocument).map(formatPokemonDocument);
   }
 
@@ -51,8 +58,35 @@ export class PokeApiProvider {
       return null;
     }
 
-    const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(normalizedKey)}`);
+    return this.fetchAndStorePokemonByIdentifier(normalizedKey);
+  }
+
+  async syncCatalogByDexNumbers(targetDexNumbers, collection) {
+    const knownDexNumbers = await getKnownDexNumbers(collection, targetDexNumbers);
+    const missingDexNumbers = targetDexNumbers.filter((dex) => !knownDexNumbers.has(dex));
+    if (missingDexNumbers.length === 0) {
+      return;
+    }
+
+    await runWithConcurrency(
+      missingDexNumbers,
+      CATALOG_SYNC_CONCURRENCY,
+      async (dex) => {
+        try {
+          await this.fetchAndStorePokemonByIdentifier(String(dex), { missingDex: dex });
+        } catch (error) {
+          console.warn(`Failed to sync Pokemon dex ${dex}`, error);
+        }
+      },
+    );
+  }
+
+  async fetchAndStorePokemonByIdentifier(identifier, options = {}) {
+    const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(identifier)}`);
     if (response.status === 404) {
+      if (Number.isInteger(options.missingDex)) {
+        await markDexUnavailable(options.missingDex);
+      }
       return null;
     }
     if (!response.ok) {
@@ -60,34 +94,15 @@ export class PokeApiProvider {
     }
 
     const payload = await response.json();
-    const dex = readDexNumberFromPayload(payload);
-    const types = readTypesFromPayload(payload);
-
-    const sprite = getPreferredSprite(payload);
-    const palette = await generateWebsitePaletteFromImage(sprite.paletteSource);
-
-    const pokemon = {
-      key: payload.name,
-      name: capitalize(payload.name),
-      types,
-      dex,
-      imageSrc: sprite.publicUrl,
-      spriteVersion: SPRITE_VERSION,
-      palette,
-      paletteVersion: PALETTE_VERSION,
-      updatedAt: new Date(),
-    };
-
-    const collection = getPokeApiCollection();
-    await collection.updateOne(
-      { key: pokemon.key },
-      {
-        $set: pokemon,
-        $setOnInsert: { createdAt: new Date() },
-      },
-      { upsert: true },
-    );
-
+    const dex = Number(payload?.id);
+    if (!Number.isInteger(dex) || dex <= 0 || dex > MAX_SUPPORTED_DEX) {
+      if (Number.isInteger(options.missingDex)) {
+        await markDexUnavailable(options.missingDex);
+      }
+      return null;
+    }
+    const pokemon = await buildPokemonDocumentFromPayload(payload);
+    await upsertPokemonDocument(pokemon);
     return pokemon;
   }
 }
@@ -119,6 +134,8 @@ function isUsablePokemonDocument(document) {
     && typeof document.name === "string"
     && Array.isArray(document.types)
     && typeof document.dex === "number"
+    && document.dex > 0
+    && document.dex <= MAX_SUPPORTED_DEX
     && typeof document.imageSrc === "string"
     && document.imageSrc.length > 0
     && document.spriteVersion === SPRITE_VERSION
@@ -153,7 +170,7 @@ function getPreferredSprite(payload) {
 
 function readDexNumberFromPayload(payload) {
   const dex = Number(payload?.id);
-  if (!Number.isInteger(dex) || dex <= 0) {
+  if (!Number.isInteger(dex) || dex <= 0 || dex > MAX_SUPPORTED_DEX) {
     throw new Error("PokeAPI payload is missing a valid dex number.");
   }
   return dex;
@@ -182,4 +199,110 @@ function capitalize(value) {
     return "";
   }
   return value[0].toUpperCase() + value.slice(1);
+}
+
+async function buildPokemonDocumentFromPayload(payload) {
+  const dex = readDexNumberFromPayload(payload);
+  const types = readTypesFromPayload(payload);
+  const sprite = getPreferredSprite(payload);
+  const palette = await generateWebsitePaletteFromImage(sprite.paletteSource);
+
+  return {
+    key: payload.name,
+    name: capitalize(payload.name),
+    types,
+    dex,
+    imageSrc: sprite.publicUrl,
+    spriteVersion: SPRITE_VERSION,
+    palette,
+    paletteVersion: PALETTE_VERSION,
+    unavailable: false,
+    updatedAt: new Date(),
+  };
+}
+
+async function upsertPokemonDocument(pokemon) {
+  const collection = getPokeApiCollection();
+  await collection.updateOne(
+    { key: pokemon.key },
+    {
+      $set: pokemon,
+      $setOnInsert: { createdAt: new Date() },
+    },
+    { upsert: true },
+  );
+}
+
+async function markDexUnavailable(dex) {
+  const collection = getPokeApiCollection();
+  await collection.updateOne(
+    { key: `${MISSING_DEX_KEY_PREFIX}${dex}` },
+    {
+      $set: {
+        key: `${MISSING_DEX_KEY_PREFIX}${dex}`,
+        name: "",
+        dex,
+        spriteVersion: SPRITE_VERSION,
+        unavailable: true,
+        updatedAt: new Date(),
+      },
+      $setOnInsert: { createdAt: new Date() },
+    },
+    { upsert: true },
+  );
+}
+
+async function getKnownDexNumbers(collection, targetDexNumbers) {
+  const docs = await collection
+    .find(
+      {
+        spriteVersion: SPRITE_VERSION,
+        dex: { $in: targetDexNumbers },
+      },
+      {
+        projection: {
+          _id: 0,
+          dex: 1,
+          key: 1,
+          name: 1,
+          types: 1,
+          imageSrc: 1,
+          spriteVersion: 1,
+          palette: 1,
+          paletteVersion: 1,
+          unavailable: 1,
+        },
+      },
+    )
+    .toArray();
+
+  const known = new Set();
+  for (const document of docs) {
+    if (!Number.isInteger(document.dex)) {
+      continue;
+    }
+
+    if (document.unavailable === true) {
+      known.add(document.dex);
+      continue;
+    }
+
+    if (isUsablePokemonDocument(document)) {
+      known.add(document.dex);
+    }
+  }
+
+  return known;
+}
+
+async function runWithConcurrency(items, concurrency, worker) {
+  if (items.length === 0) {
+    return;
+  }
+
+  const chunkSize = Math.max(1, concurrency);
+  for (let index = 0; index < items.length; index += chunkSize) {
+    const chunk = items.slice(index, index + chunkSize);
+    await Promise.all(chunk.map((item) => worker(item)));
+  }
 }

@@ -17,7 +17,12 @@ export default function HomePage({
   themes,
 }) {
   const options = useMemo(
-    () => pokemonOptions.map((entry) => ({ key: entry.key, name: entry.name, dex: entry.dex })),
+    () => pokemonOptions.map((entry) => ({
+      key: entry.key,
+      name: entry.name,
+      dex: entry.dex,
+      imageSrc: entry.imageSrc,
+    })),
     [pokemonOptions],
   );
 

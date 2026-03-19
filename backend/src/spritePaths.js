@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,6 +14,7 @@ const GENERATION_V_BW_RELATIVE_PATH = path.join(
   "generation-v",
   "black-white",
 );
+let cachedGenerationVBlackWhiteDexNumbers = null;
 
 export function getSpriteStaticRootDir() {
   for (const baseDir of BASE_DIR_CANDIDATES) {
@@ -47,4 +48,33 @@ export function hasGenerationVBlackWhiteSprite(dex) {
 
 export function getGenerationVBlackWhiteSpriteAbsolutePath(dex) {
   return path.join(getGenerationVBlackWhiteSpriteDir(), `${dex}.png`);
+}
+
+export function getGenerationVBlackWhiteSpriteDexNumbers() {
+  if (Array.isArray(cachedGenerationVBlackWhiteDexNumbers)) {
+    return cachedGenerationVBlackWhiteDexNumbers;
+  }
+
+  let fileNames = [];
+  try {
+    fileNames = readdirSync(getGenerationVBlackWhiteSpriteDir());
+  } catch {
+    cachedGenerationVBlackWhiteDexNumbers = [];
+    return cachedGenerationVBlackWhiteDexNumbers;
+  }
+
+  const dexNumbers = [...new Set(fileNames
+    .map((fileName) => {
+      const match = /^(\d+)\.png$/i.exec(fileName);
+      if (!match) {
+        return null;
+      }
+      const dex = Number.parseInt(match[1], 10);
+      return Number.isInteger(dex) && dex > 0 ? dex : null;
+    })
+    .filter((dex) => dex !== null))]
+    .sort((left, right) => left - right);
+
+  cachedGenerationVBlackWhiteDexNumbers = dexNumbers;
+  return cachedGenerationVBlackWhiteDexNumbers;
 }
