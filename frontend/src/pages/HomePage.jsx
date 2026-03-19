@@ -1,30 +1,40 @@
 import React, { useMemo } from "react";
-import PokemonCard from "../components/PokemonCard.jsx";
 import FavoriteToggle from "../components/FavoriteToggle.jsx";
+import PokemonCard from "../components/PokemonCard.jsx";
 import SwatchList from "../components/SwatchList.jsx";
 import ThemePreview from "../components/ThemePreview.jsx";
-import { POKEMON, toSwatches } from "../data/mockData.js";
+import { toSwatches } from "../data/themeUtils.js";
 
 export default function HomePage({
-  pokemon, // current selected Pokemon object from App state
-  searchText, // string in App state
-  onSearchTextChange, // setter from App state
-  onGenerate, // handler from App state
-  onSave, // adds current Pokemon to themes (no duplicates)
-  onRemove, // removes by pokemonKey
-  themes, // themes array from App state
+  pokemon,
+  pokemonOptions,
+  searchText,
+  onSearchTextChange,
+  onGenerate,
+  onSave,
+  onRemove,
+  isSavingTheme,
+  themes,
 }) {
   const options = useMemo(
-    () => POKEMON.map((p) => ({ key: p.key, name: p.name, dex: p.dex })),
-    [],
+    () => pokemonOptions.map((entry) => ({ key: entry.key, name: entry.name, dex: entry.dex })),
+    [pokemonOptions],
   );
 
-  const swatches = useMemo(() => toSwatches(pokemon.palette), [pokemon]);
+  if (!pokemon) {
+    return (
+      <main id="main" className="container home-page">
+        <section className="panel status-panel">
+          <h1>No Pokemon found</h1>
+          <p className="muted">The server did not return Pokemon data.</p>
+        </section>
+      </main>
+    );
+  }
 
-  // heart reflects whether this pokemon is currently saved
-  const isSaved = themes?.some((t) => t.pokemonKey === pokemon.key) ?? false;
+  const swatches = toSwatches(pokemon.palette);
+  const isSaved = themes?.some((theme) => theme.pokemonKey === pokemon.key) ?? false;
 
-  // Apply generated palette as CSS variables so buttons + preview can match the theme
   const themeVars = {
     "--theme-bg": pokemon.palette.bg,
     "--theme-primary": pokemon.palette.primary,
@@ -38,14 +48,10 @@ export default function HomePage({
     <main id="main" className="container home-page">
       <section className="page-head">
         <h1>Generate a theme</h1>
-        <p className="muted">Choose a Pokémon to generate a color palette.</p>
+        <p className="muted">Choose a Pokemon to generate a color palette.</p>
       </section>
 
-      <section
-        className="grid home-grid"
-        style={themeVars}
-        aria-label="Generated theme output"
-      >
+      <section className="grid home-grid" style={themeVars} aria-label="Generated theme output">
         <PokemonCard
           pokemonName={pokemon.name}
           typeLabel={pokemon.types ? pokemon.types.join(" / ") : pokemon.type}
@@ -63,8 +69,11 @@ export default function HomePage({
             <FavoriteToggle
               checked={isSaved}
               onChange={(next) => {
-                if (next) onSave?.();
-                else onRemove?.(pokemon.key);
+                if (next) {
+                  onSave?.();
+                } else {
+                  onRemove?.(pokemon.key);
+                }
               }}
               ariaLabel="Toggle theme in My Themes"
             />
@@ -73,8 +82,13 @@ export default function HomePage({
           <SwatchList swatches={swatches} />
 
           <div className="actions">
-            <button className="btn-primary" type="button" onClick={onSave}>
-              Save theme
+            <button
+              className="btn-primary"
+              type="button"
+              onClick={onSave}
+              disabled={isSavingTheme || isSaved}
+            >
+              {isSaved ? "Theme saved" : isSavingTheme ? "Saving..." : "Save theme"}
             </button>
           </div>
 

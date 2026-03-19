@@ -1,4 +1,4 @@
-export const POKEMON = [
+export const POKEMON_CATALOG = [
   {
     key: "pikachu",
     name: "Pikachu",
@@ -66,50 +66,8 @@ export const POKEMON = [
   },
 ];
 
-export function toSwatches(palette) {
-  return [
-    {
-      role: "Background",
-      value: palette.bg,
-      chipStyle: { background: palette.bg },
-    },
-    {
-      role: "Primary",
-      value: palette.primary,
-      chipStyle: { background: palette.primary },
-    },
-    {
-      role: "Accent",
-      value: palette.accent,
-      chipStyle: { background: palette.accent },
-    },
-    {
-      role: "Text",
-      value: palette.text,
-      chipStyle: { background: palette.text },
-    },
-  ];
-}
+const pokemonByKey = new Map(POKEMON_CATALOG.map((pokemon) => [pokemon.key, pokemon]));
 
-export const INITIAL_THEMES = [
-  {
-    id: "t1",
-    pokemonKey: "squirtle",
-    pokemonName: "Squirtle",
-    types: ["Water"],
-    dex: 7,
-    imageSrc: "/squirtle.jpg",
-    isFavorite: true,
-    palette: POKEMON.find((p) => p.key === "squirtle").palette,
-  },
-  {
-    id: "t2",
-    pokemonKey: "joltik",
-    pokemonName: "Joltik",
-    types: ["Bug", "Electric"],
-    dex: 595,
-    imageSrc: "/joltik.png",
-    isFavorite: true,
-    palette: POKEMON.find((p) => p.key === "joltik").palette,
-  },
-];
+export function getPokemonByKey(pokemonKey) {
+  return pokemonByKey.get(pokemonKey) ?? null;
+}

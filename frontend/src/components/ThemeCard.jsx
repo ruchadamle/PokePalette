@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import FavoriteToggle from "./FavoriteToggle.jsx";
 import SwatchList from "./SwatchList.jsx";
-import { toSwatches } from "../data/mockData.js";
+import { toSwatches } from "../data/themeUtils.js";
 
 export default function ThemeCard({ theme, onToggleFavorite }) {
   const swatches = useMemo(() => toSwatches(theme.palette), [theme.palette]);

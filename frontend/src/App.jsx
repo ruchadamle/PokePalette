@@ -1,62 +1,79 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { createTheme, deleteTheme, fetchPokemon, fetchThemes } from "./api/themeApi.js";
 import SiteHeader from "./components/SiteHeader.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import ThemesPage from "./pages/ThemesPage.jsx";
+import { hexToRgba } from "./data/themeUtils.js";
 
-import { INITIAL_THEMES, POKEMON } from "./data/mockData.js";
-
-function hexToRgba(hex, a) {
-  const h = hex.replace("#", "").trim();
-  const full =
-    h.length === 3
-      ? h
-          .split("")
-          .map((c) => c + c)
-          .join("")
-      : h;
-  const n = parseInt(full, 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-  return `rgba(${r}, ${g}, ${b}, ${a})`;
-}
-
-function makeThemeFromPokemon(p) {
-  return {
-    id: `t_${crypto.randomUUID()}`,
-    pokemonKey: p.key,
-    pokemonName: p.name,
-    types: p.types,
-    dex: p.dex,
-    imageSrc: p.imageSrc,
-    isFavorite: true,
-    palette: p.palette,
-  };
-}
+const DEFAULT_USER_ID = (import.meta.env.VITE_USER_ID ?? "").trim() || "demo-user";
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
-
-  const [themes, setThemes] = useState(INITIAL_THEMES);
-
+  const [pokemonList, setPokemonList] = useState([]);
+  const [themes, setThemes] = useState([]);
   const [searchText, setSearchText] = useState("Pikachu");
-  const [currentPokemonKey, setCurrentPokemonKey] = useState("pikachu");
+  const [currentPokemonKey, setCurrentPokemonKey] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [isMutatingTheme, setIsMutatingTheme] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
+
   const currentPokemon = useMemo(
-    () => POKEMON.find((p) => p.key === currentPokemonKey) || POKEMON[0],
-    [currentPokemonKey],
+    () => pokemonList.find((pokemon) => pokemon.key === currentPokemonKey) || pokemonList[0] || null,
+    [currentPokemonKey, pokemonList],
   );
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function loadInitialData() {
+      setIsLoading(true);
+      setLoadError("");
+
+      try {
+        const [pokemon, savedThemes] = await Promise.all([
+          fetchPokemon(),
+          fetchThemes(DEFAULT_USER_ID),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setPokemonList(pokemon);
+        setThemes(savedThemes);
+
+        const initialPokemon = pokemon.find((entry) => entry.key === "pikachu") || pokemon[0] || null;
+        setCurrentPokemonKey(initialPokemon?.key ?? "");
+        setSearchText(initialPokemon?.name ?? "");
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error.message || "Could not load data from server.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadInitialData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadToken]);
+
+  useEffect(() => {
+    if (!currentPokemon) {
+      return;
+    }
+
     const root = document.documentElement;
-    root.style.setProperty(
-      "--bloom-1-color",
-      hexToRgba(currentPokemon.palette.primary, 0.22),
-    );
-    root.style.setProperty(
-      "--bloom-2-color",
-      hexToRgba(currentPokemon.palette.accent, 0.16),
-    );
+    root.style.setProperty("--bloom-1-color", hexToRgba(currentPokemon.palette.primary, 0.22));
+    root.style.setProperty("--bloom-2-color", hexToRgba(currentPokemon.palette.accent, 0.16));
   }, [currentPokemon]);
 
   useEffect(() => {
@@ -65,72 +82,128 @@ export default function App() {
   }, [isDarkMode]);
 
   function generateTheme() {
+    if (pokemonList.length === 0) {
+      return;
+    }
+
     const normalized = searchText.trim().toLowerCase();
+    const matchedPokemon = pokemonList.find((pokemon) => pokemon.name.toLowerCase() === normalized)
+      || pokemonList.find((pokemon) => pokemon.name.toLowerCase().includes(normalized))
+      || pokemonList[0];
 
-    const match =
-      POKEMON.find((p) => p.name.toLowerCase() === normalized) ||
-      POKEMON.find((p) => p.name.toLowerCase().includes(normalized)) ||
-      POKEMON[0];
-
-    setCurrentPokemonKey(match.key);
+    setCurrentPokemonKey(matchedPokemon.key);
+    setSearchText(matchedPokemon.name);
   }
 
-  function toggleThemeFavorite(themeId, nextChecked) {
-    setThemes((prev) =>
-      prev.map((t) =>
-        t.id === themeId ? { ...t, isFavorite: nextChecked } : t,
-      ),
-    );
+  async function saveCurrentTheme() {
+    if (!currentPokemon) {
+      return;
+    }
+
+    const alreadySaved = themes.some((theme) => theme.pokemonKey === currentPokemon.key);
+    if (alreadySaved) {
+      return;
+    }
+
+    setActionError("");
+    setIsMutatingTheme(true);
+    try {
+      const createdTheme = await createTheme(DEFAULT_USER_ID, currentPokemon.key);
+      setThemes((prevThemes) => [createdTheme, ...prevThemes]);
+    } catch (error) {
+      if (error.status === 409 && error.payload?.theme) {
+        const existingTheme = error.payload.theme;
+        setThemes((prevThemes) => [
+          existingTheme,
+          ...prevThemes.filter((theme) => theme.pokemonKey !== existingTheme.pokemonKey),
+        ]);
+        return;
+      }
+      setActionError(error.message || "Could not save theme.");
+    } finally {
+      setIsMutatingTheme(false);
+    }
   }
 
-  function saveCurrentTheme() {
-    setThemes((prev) => {
-      const already = prev.some((t) => t.pokemonKey === currentPokemon.key);
-      if (already) return prev;
-
-      const newTheme = makeThemeFromPokemon(currentPokemon);
-      return [newTheme, ...prev];
-    });
-  }
-
-  function removeThemeByKey(pokemonKey) {
-    setThemes((prev) => prev.filter((t) => t.pokemonKey !== pokemonKey));
+  async function removeThemeByKey(pokemonKey) {
+    setActionError("");
+    setIsMutatingTheme(true);
+    try {
+      await deleteTheme(DEFAULT_USER_ID, pokemonKey);
+      setThemes((prevThemes) => prevThemes.filter((theme) => theme.pokemonKey !== pokemonKey));
+    } catch (error) {
+      if (error.status === 404) {
+        setThemes((prevThemes) => prevThemes.filter((theme) => theme.pokemonKey !== pokemonKey));
+        return;
+      }
+      setActionError(error.message || "Could not remove theme.");
+    } finally {
+      setIsMutatingTheme(false);
+    }
   }
 
   return (
     <>
       <SiteHeader
         isDarkMode={isDarkMode}
-        onToggleDarkMode={() => setIsDarkMode((v) => !v)}
+        onToggleDarkMode={() => setIsDarkMode((value) => !value)}
       />
 
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <HomePage
-              pokemon={currentPokemon}
-              searchText={searchText}
-              onSearchTextChange={setSearchText}
-              onGenerate={generateTheme}
-              onSave={saveCurrentTheme}
-              onRemove={removeThemeByKey}
-              themes={themes}
+      {isLoading ? (
+        <main id="main" className="container">
+          <section className="panel status-panel" role="status" aria-live="polite">
+            <h1>Loading...</h1>
+            <p className="muted">Fetching Pokemon and saved themes from the server.</p>
+          </section>
+        </main>
+      ) : loadError ? (
+        <main id="main" className="container">
+          <section className="panel status-panel status-error" role="alert">
+            <h1>Could not load data</h1>
+            <p>{loadError}</p>
+            <button className="btn-primary" type="button" onClick={() => setReloadToken((count) => count + 1)}>
+              Retry
+            </button>
+          </section>
+        </main>
+      ) : (
+        <>
+          {actionError && (
+            <section className="container status-inline-wrap" role="alert">
+              <p className="status-inline-error">{actionError}</p>
+            </section>
+          )}
+
+          <Routes>
+            <Route
+              path="/"
+              element={(
+                <HomePage
+                  pokemon={currentPokemon}
+                  pokemonOptions={pokemonList}
+                  searchText={searchText}
+                  onSearchTextChange={setSearchText}
+                  onGenerate={generateTheme}
+                  onSave={saveCurrentTheme}
+                  onRemove={removeThemeByKey}
+                  isSavingTheme={isMutatingTheme}
+                  themes={themes}
+                />
+              )}
             />
-          }
-        />
-        <Route
-          path="/themes"
-          element={
-            <ThemesPage
-              themes={themes}
-              onToggleFavorite={toggleThemeFavorite}
-              onRemove={removeThemeByKey}
+            <Route
+              path="/themes"
+              element={(
+                <ThemesPage
+                  themes={themes}
+                  onRemove={removeThemeByKey}
+                />
+              )}
             />
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </>
+      )}
     </>
   );
 }
