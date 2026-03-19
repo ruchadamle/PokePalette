@@ -13,10 +13,11 @@ const SPRITE_VERSION = "gen-v-black-white-local-v2";
 const CATALOG_SYNC_CONCURRENCY = 8;
 const MISSING_DEX_KEY_PREFIX = "missing-dex-";
 const MAX_SUPPORTED_DEX = 10000;
-const DEFAULT_BACKEND_ASSET_BASE_URL = `http://localhost:${Number.parseInt(getEnvVar("PORT", false), 10) || 3000}`;
+const DEFAULT_BACKEND_ASSET_BASE_URL = "";
 const BACKEND_ASSET_BASE_URL = (getEnvVar("BACKEND_ASSET_BASE_URL", false) ?? DEFAULT_BACKEND_ASSET_BASE_URL)
   .trim()
   .replace(/\/+$/, "");
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 const DISPLAY_NAME_OVERRIDES_BY_DEX = new Map([
   [32, "Nidoran"],
   [122, "Mr. Mime"],
@@ -88,10 +89,9 @@ export class PokeApiProvider {
       .filter((dex) => dex <= MAX_SUPPORTED_DEX);
 
     if (targetDexNumbers.length === 0) {
-      const existing = (await collection.find({}).sort({ dex: 1, key: 1 }).toArray())
+      return (await collection.find({}).sort({ dex: 1, key: 1 }).toArray())
         .filter(isUsablePokemonDocument)
         .map(formatPokemonDocument);
-      return existing;
     }
 
     await this.syncCatalogByDexNumbers(targetDexNumbers, collection);
@@ -183,7 +183,7 @@ function formatPokemonDocument(document) {
     name: getDisplayPokemonName(document.key, dex, document.name),
     types: document.types,
     dex,
-    imageSrc: document.imageSrc,
+    imageSrc: normalizeImageSrcForResponse(document.imageSrc, dex),
     spriteVersion: document.spriteVersion ?? null,
     palette: document.palette,
     paletteVersion: document.paletteVersion ?? null,
@@ -220,7 +220,7 @@ function getPreferredSprite(payload) {
 
   if (hasGenerationVBlackWhiteSprite(dex)) {
     return {
-      publicUrl: `${BACKEND_ASSET_BASE_URL}${localRelativePath}`,
+      publicUrl: buildPublicSpriteUrl(localRelativePath),
       paletteSource: localFilePath,
     };
   }
@@ -387,4 +387,45 @@ function getDisplayPokemonName(key, dex, fallbackName) {
   }
 
   return capitalize(normalizedKey);
+}
+
+function buildPublicSpriteUrl(relativePath) {
+  if (!BACKEND_ASSET_BASE_URL) {
+    return relativePath;
+  }
+  return `${BACKEND_ASSET_BASE_URL}${relativePath}`;
+}
+
+function normalizeImageSrcForResponse(imageSrc, dex) {
+  if (typeof imageSrc !== "string" || imageSrc.trim().length === 0) {
+    return imageSrc;
+  }
+
+  const trimmedImageSrc = imageSrc.trim();
+  if (trimmedImageSrc.startsWith("/sprites/")) {
+    return resolveRelativeSpriteUrl(trimmedImageSrc, dex);
+  }
+
+  try {
+    const parsedUrl = new URL(trimmedImageSrc);
+    if (LOCAL_HOSTNAMES.has(parsedUrl.hostname.toLowerCase()) && parsedUrl.pathname.startsWith("/sprites/")) {
+      return resolveRelativeSpriteUrl(parsedUrl.pathname, dex);
+    }
+  } catch {
+    return trimmedImageSrc;
+  }
+
+  return trimmedImageSrc;
+}
+
+function resolveRelativeSpriteUrl(relativePath, dex) {
+  if (Number.isInteger(dex) && hasGenerationVBlackWhiteSprite(dex)) {
+    return relativePath;
+  }
+
+  if (Number.isInteger(dex) && dex > 0) {
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/${dex}.png`;
+  }
+
+  return relativePath;
 }
