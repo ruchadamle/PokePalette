@@ -3,14 +3,19 @@ const API_BASE_URL = configuredApiBaseUrl ? configuredApiBaseUrl.replace(/\/+$/,
 
 export async function fetchPokemon() {
   const data = await request("/api/pokemon");
-  return data.pokemon ?? [];
+  const pokemon = (data?.pokemon ?? [])
+    .map(normalizePokemonRecord)
+    .filter(Boolean);
+  return pokemon;
 }
 
 export async function fetchThemes(userId, token) {
   const data = await request(`/api/users/${encodeURIComponent(userId)}/themes`, {
     token,
   });
-  return data.themes ?? [];
+  return (data?.themes ?? [])
+    .map(normalizeThemeRecord)
+    .filter(Boolean);
 }
 
 export async function createTheme(userId, pokemonKey, token) {
@@ -19,7 +24,7 @@ export async function createTheme(userId, pokemonKey, token) {
     body: { pokemonKey },
     token,
   });
-  return data.theme;
+  return normalizeThemeRecord(data?.theme);
 }
 
 export async function deleteTheme(userId, pokemonKey, token) {
@@ -67,4 +72,60 @@ async function readJsonSafe(response) {
   } catch {
     return null;
   }
+}
+
+function normalizePokemonRecord(record) {
+  if (!record || typeof record !== "object") {
+    return null;
+  }
+
+  const dex = Number(record.dex);
+  if (!Number.isInteger(dex) || dex <= 0) {
+    return null;
+  }
+
+  const types = Array.isArray(record.types)
+    ? record.types.filter((type) => typeof type === "string" && type.trim().length > 0)
+    : [];
+  if (types.length === 0) {
+    return null;
+  }
+
+  if (typeof record.key !== "string" || typeof record.name !== "string" || typeof record.imageSrc !== "string") {
+    return null;
+  }
+
+  return {
+    ...record,
+    dex,
+    types,
+  };
+}
+
+function normalizeThemeRecord(record) {
+  if (!record || typeof record !== "object") {
+    return null;
+  }
+
+  if (typeof record.id !== "string" || typeof record.pokemonKey !== "string" || typeof record.pokemonName !== "string") {
+    return null;
+  }
+
+  const dex = Number(record.dex);
+  if (!Number.isInteger(dex) || dex <= 0) {
+    return null;
+  }
+
+  const types = Array.isArray(record.types)
+    ? record.types.filter((type) => typeof type === "string" && type.trim().length > 0)
+    : [];
+  if (types.length === 0) {
+    return null;
+  }
+
+  return {
+    ...record,
+    dex,
+    types,
+  };
 }

@@ -149,6 +149,10 @@ export default function App() {
     setActionError("");
     try {
       const createdTheme = await createTheme(authUsername, currentPokemon.key, authToken);
+      if (!createdTheme) {
+        setActionError("Server returned an invalid theme payload.");
+        return;
+      }
       setThemes((prevThemes) => [createdTheme, ...prevThemes]);
     } catch (error) {
       if (error.status === 409 && error.payload?.theme) {

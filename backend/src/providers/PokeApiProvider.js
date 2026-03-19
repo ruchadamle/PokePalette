@@ -60,9 +60,8 @@ export class PokeApiProvider {
     }
 
     const payload = await response.json();
-    const types = (payload.types ?? [])
-      .sort((a, b) => a.slot - b.slot)
-      .map((entry) => capitalize(entry.type?.name ?? ""));
+    const dex = readDexNumberFromPayload(payload);
+    const types = readTypesFromPayload(payload);
 
     const sprite = getPreferredSprite(payload);
     const palette = await generateWebsitePaletteFromImage(sprite.paletteSource);
@@ -71,7 +70,7 @@ export class PokeApiProvider {
       key: payload.name,
       name: capitalize(payload.name),
       types,
-      dex: payload.id,
+      dex,
       imageSrc: sprite.publicUrl,
       spriteVersion: SPRITE_VERSION,
       palette,
@@ -130,7 +129,7 @@ function isUsablePokemonDocument(document) {
 }
 
 function getPreferredSprite(payload) {
-  const dex = payload?.id;
+  const dex = readDexNumberFromPayload(payload);
   const localRelativePath = getGenerationVBlackWhiteSpriteRelativePath(dex);
   const localFilePath = getGenerationVBlackWhiteSpriteAbsolutePath(dex);
   const remoteFallback = payload.sprites?.versions?.["generation-v"]?.["black-white"]?.front_default
@@ -150,6 +149,32 @@ function getPreferredSprite(payload) {
     publicUrl: remoteFallback,
     paletteSource: remoteFallback,
   };
+}
+
+function readDexNumberFromPayload(payload) {
+  const dex = Number(payload?.id);
+  if (!Number.isInteger(dex) || dex <= 0) {
+    throw new Error("PokeAPI payload is missing a valid dex number.");
+  }
+  return dex;
+}
+
+function readTypesFromPayload(payload) {
+  if (!Array.isArray(payload?.types) || payload.types.length === 0) {
+    throw new Error("PokeAPI payload is missing Pokemon types.");
+  }
+
+  const types = payload.types
+    .slice()
+    .sort((a, b) => (Number(a?.slot) || 0) - (Number(b?.slot) || 0))
+    .map((entry) => capitalize(entry?.type?.name ?? ""))
+    .filter(Boolean);
+
+  if (types.length === 0) {
+    throw new Error("PokeAPI payload contains invalid Pokemon types.");
+  }
+
+  return types;
 }
 
 function capitalize(value) {

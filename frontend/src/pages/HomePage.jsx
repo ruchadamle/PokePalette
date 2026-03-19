@@ -54,7 +54,7 @@ export default function HomePage({
       <section className="grid home-grid" style={themeVars} aria-label="Generated theme output">
         <PokemonCard
           pokemonName={pokemon.name}
-          typeLabel={pokemon.types ? pokemon.types.join(" / ") : pokemon.type}
+          typeLabel={pokemon.types.join(" / ")}
           dexNumber={`#${String(pokemon.dex).padStart(3, "0")}`}
           imageSrc={pokemon.imageSrc}
           options={options}
