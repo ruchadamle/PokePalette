@@ -1,6 +1,13 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { FaCircleNotch, FaMoon, FaSun, FaUserCircle } from "react-icons/fa";
+import { FaUserCircle } from "react-icons/fa";
+
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").trim();
+const ASSET_BASE_URL = configuredApiBaseUrl ? configuredApiBaseUrl.replace(/\/+$/, "") : "http://localhost:3000";
+
+const POKEBALL_SRC = `${ASSET_BASE_URL}/sprites/items/poke-ball.png`;
+const SOLROCK_SRC = `${ASSET_BASE_URL}/sprites/pokemon/versions/generation-v/black-white/338.png`;
+const LUNATONE_SRC = `${ASSET_BASE_URL}/sprites/pokemon/versions/generation-v/black-white/337.png`;
 
 export default function SiteHeader({ isDarkMode, onToggleDarkMode, isAuthenticated, username }) {
   return (
@@ -8,23 +15,29 @@ export default function SiteHeader({ isDarkMode, onToggleDarkMode, isAuthenticat
       <div className="container header-inner">
         <div className="header-left">
           <NavLink className="brand" to="/" aria-label="PokePalette home">
-            <FaCircleNotch className="brand-logo brand-glyph" aria-hidden="true" />
+            <img className="brand-logo" src={POKEBALL_SRC} alt="" aria-hidden="true" />
             <span className="brand-text">PokePalette</span>
           </NavLink>
 
-          <button
-            type="button"
-            className={`dm-switch ${isDarkMode ? "on" : "off"}`}
-            onClick={onToggleDarkMode}
-            aria-label="Toggle dark mode"
-            title={isDarkMode ? "Dark mode enabled" : "Light mode enabled"}
-          >
-            <span className="dm-switch-track">
-              <span className="dm-switch-thumb">
-                {isDarkMode ? <FaMoon className="dm-icon" aria-hidden="true" /> : <FaSun className="dm-icon" aria-hidden="true" />}
-              </span>
+          <div className="dm-toggle-wrap">
+            <button
+              type="button"
+              className="dm-image-toggle"
+              onClick={onToggleDarkMode}
+              aria-label={isDarkMode ? "Toggle light mode" : "Toggle dark mode"}
+              title={isDarkMode ? "Toggle light mode" : "Toggle dark mode"}
+            >
+              <img
+                className="dm-toggle-image"
+                src={isDarkMode ? LUNATONE_SRC : SOLROCK_SRC}
+                alt=""
+                aria-hidden="true"
+              />
+            </button>
+            <span className="dm-toggle-text">
+              {isDarkMode ? "Toggle light mode" : "Toggle dark mode"}
             </span>
-          </button>
+          </div>
         </div>
 
         <nav className="nav" aria-label="Primary navigation">
