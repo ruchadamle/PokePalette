@@ -17,6 +17,68 @@ const DEFAULT_BACKEND_ASSET_BASE_URL = `http://localhost:${Number.parseInt(getEn
 const BACKEND_ASSET_BASE_URL = (getEnvVar("BACKEND_ASSET_BASE_URL", false) ?? DEFAULT_BACKEND_ASSET_BASE_URL)
   .trim()
   .replace(/\/+$/, "");
+const DISPLAY_NAME_OVERRIDES_BY_DEX = new Map([
+  [32, "Nidoran"],
+  [122, "Mr. Mime"],
+  [386, "Deoxys"],
+  [413, "Wormadam"],
+  [487, "Giratina"],
+  [550, "Basculin"],
+  [555, "Darmanitan"],
+  [592, "Frillish"],
+  [593, "Jellicent"],
+  [641, "Tornadus"],
+  [642, "Thundurus"],
+  [645, "Landorus"],
+  [647, "Keldeo"],
+  [648, "Meloetta"],
+  [668, "Pyroar"],
+  [678, "Meowstic"],
+  [681, "Aegislash"],
+  [710, "Pumpkaboo"],
+  [711, "Gourgeist"],
+  [718, "Zygarde"],
+  [745, "Lycanroc"],
+  [746, "Wishiwashi"],
+  [774, "Minior"],
+  [778, "Mimikyu"],
+  [849, "Toxtricity"],
+  [875, "Eiscue"],
+  [876, "Indeedee"],
+  [877, "Morpeko"],
+  [892, "Urshifu"],
+  [902, "Basculegion"],
+  [905, "Enamorus"],
+  [916, "Oinkologne"],
+  [925, "Maushold"],
+  [931, "Squawkabilly"],
+  [964, "Palafin"],
+  [978, "Tatsugiri"],
+  [982, "Dudunsparce"],
+  [984, "Great Tusk"],
+  [985, "Scream Tail"],
+  [986, "Brute Bonnet"],
+  [987, "Flutter Mane"],
+  [988, "Slither Wing"],
+  [989, "Sandy Shocks"],
+  [990, "Iron Treads"],
+  [991, "Iron Bundle"],
+  [992, "Iron Hands"],
+  [993, "Iron Jugulis"],
+  [994, "Iron Moth"],
+  [995, "Iron Thorns"],
+  [1006, "Iron Valiant"],
+  [1009, "Walking Wake"],
+  [1010, "Iron Leaves"],
+  [1020, "Gouging Fire"],
+  [1021, "Raging Bolt"],
+  [1022, "Iron Boulder"],
+  [1023, "Iron Crown"],
+]);
+const DISPLAY_NAME_OVERRIDES_BY_KEY = new Map([
+  ["meloetta-aria", "Meloetta"],
+  ["meloetta-pirouette", "Meloetta"],
+]);
 
 export class PokeApiProvider {
   async getPokemonCatalog() {
@@ -115,11 +177,12 @@ function normalizePokemonKey(value) {
 }
 
 function formatPokemonDocument(document) {
+  const dex = Number(document.dex);
   return {
     key: document.key,
-    name: document.name,
+    name: getDisplayPokemonName(document.key, dex, document.name),
     types: document.types,
-    dex: document.dex,
+    dex,
     imageSrc: document.imageSrc,
     spriteVersion: document.spriteVersion ?? null,
     palette: document.palette,
@@ -209,7 +272,7 @@ async function buildPokemonDocumentFromPayload(payload) {
 
   return {
     key: payload.name,
-    name: capitalize(payload.name),
+    name: getDisplayPokemonName(payload.name, dex, capitalize(payload.name)),
     types,
     dex,
     imageSrc: sprite.publicUrl,
@@ -305,4 +368,23 @@ async function runWithConcurrency(items, concurrency, worker) {
     const chunk = items.slice(index, index + chunkSize);
     await Promise.all(chunk.map((item) => worker(item)));
   }
+}
+
+function getDisplayPokemonName(key, dex, fallbackName) {
+  const normalizedKey = normalizePokemonKey(key);
+  const keyOverride = DISPLAY_NAME_OVERRIDES_BY_KEY.get(normalizedKey);
+  if (keyOverride) {
+    return keyOverride;
+  }
+
+  const dexOverride = DISPLAY_NAME_OVERRIDES_BY_DEX.get(dex);
+  if (dexOverride) {
+    return dexOverride;
+  }
+
+  if (typeof fallbackName === "string" && fallbackName.trim().length > 0) {
+    return fallbackName;
+  }
+
+  return capitalize(normalizedKey);
 }
