@@ -1280,6 +1280,12 @@ input::-webkit-search-cancel-button {
   color: var(--color-text-muted);
 }
 
+.combo-name {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
 .home-page .swatches {
   grid-template-columns: 1fr;
   gap: 0.8rem;
