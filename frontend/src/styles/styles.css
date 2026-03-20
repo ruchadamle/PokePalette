@@ -1485,6 +1485,11 @@ input::-webkit-search-cancel-button {
   }
 }
 
-.combo-menu {
-  background: red !important;
+@media (min-width: 48rem) and (max-width: 80rem) {
+  .combo-menu {
+    width: 32rem;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
 }
