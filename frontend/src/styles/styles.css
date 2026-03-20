@@ -1485,9 +1485,11 @@ input::-webkit-search-cancel-button {
   }
 }
 
-@media (min-width: 48rem) and (max-width: 80rem) {
-  .combo-item {
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
+@media (min-width: 800px) and (max-width: 1480px) {
+  .combo-menu {
+    left: 50% !important;
+    right: auto !important;
+    width: calc(100% + 3rem) !important;
+    transform: translateX(-50%) !important;
   }
 }
